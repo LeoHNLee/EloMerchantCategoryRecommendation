@@ -1,3 +1,5 @@
+from collections import Counter
+
 def preFirstActiveMonth(df):
     '''split first active month to year and month
     x : pd.Series of which column name is 'first_active_month'
@@ -26,3 +28,22 @@ def printUniqCount(var):
     for i in var:
         print("{} Unique : ".format(i), '\n', var[i].unique(), "\n")
         print("{} Count : ".format(i), '\n', var[i].value_counts(), "\n\n")
+
+def mode(x):
+    cnt = Counter(x)
+    return cnt.most_common(1)[0][0]
+
+def mergeGroupby(origin, grouped, foo, by='card_id'):
+    '''merge by "card_id or etc" groupby Series to DF
+    origin : train or test or sth sp
+    grouped : grouped pd.Series
+    foo : agg func
+    by : merge base'''
+    prepared = grouped.aggregate(foo)
+    def keyErrorHandler(x):
+        try:
+            return prepared[x]
+        except KeyError:
+            return None
+    ret = origin[by].apply(lambda row : keyErrorHandler(row))
+    return ret
