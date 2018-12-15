@@ -47,3 +47,10 @@ def mergeGroupby(origin, grouped, foo, by='card_id'):
             return None
     ret = origin[by].apply(lambda row : keyErrorHandler(row))
     return ret
+
+def compressYear(df):
+    def byRow(row):
+        if row == 2018 : return 2017
+        if row==2011 or row==2012 or row==2013 : return 2014
+        return row
+    return df['first_active_year'].apply(lambda row : byRow(row))
