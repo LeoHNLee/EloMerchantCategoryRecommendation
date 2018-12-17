@@ -3,12 +3,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import lightgbm as lgb
-
-def briefLgb(cols, train = trainLabels):
-    lgbTrain = lgb.Dataset(train[cols], label=train['target'], categorical_feature = cols)
-    param = {'metric':'l2_root', 'objective':'regression', 'num_thresds' : 2, 'reg_sqrt':True}
-    cvResult = lgb.cv(param, lgbTrain, 5, nfold=5, stratified=False)
-    return cvResult
+import matplotlib.pyplot as plt
 
 def preFirstActiveMonth(df):
     '''split first active month to year and month
@@ -37,25 +32,21 @@ def printUniqCount(var):
     var : pandas dataframe'''
     for i in var:
         print("{} Unique : ".format(i), '\n', var[i].unique(), "\n")
-        print("{} Count : ".format(i), '\n', var[i].value_counts(), "\n\n")
+        print("{} Count : ".format(i), '\n', var[i].value_counts(dropna=False), "\n\n")
 
 def mode(x):
     cnt = Counter(x)
     return cnt.most_common(1)[0][0]
 
-def mergeGroupby(origin, grouped, foo, by='card_id'):
+def mergeGroupby(left, right, col, foo, rename=None, by='card_id'):
     '''merge by "card_id or etc" groupby Series to DF
     origin : train or test or sth sp
     grouped : grouped pd.Series
     foo : agg func
     by : merge base'''
-    prepared = grouped.aggregate(foo)
-    def keyErrorHandler(x):
-        try:
-            return prepared[x]
-        except KeyError:
-            return None
-    ret = origin[by].apply(lambda row : keyErrorHandler(row))
+    grouped = right[[by, col]].groupby([by]).aggregate(foo)
+    if rename : grouped = grouped.rename(columns = {col : rename})
+    ret = left.merge(right=grouped, how='left', on=by)
     return ret
 
 def compressYear(df):
@@ -65,8 +56,25 @@ def compressYear(df):
         return row
     return df['first_active_year'].apply(lambda row : byRow(row))
 
-def compareTrainTest(col, train=trainLabels, test=testLabels, hist=True, bins=None, figsize=(15,8)):
+def compareTrainTest(col, train, test, hist=True, bins=None, figsize=(15,15)):
     fig, (axTrain, axTest) = plt.subplots(2, 1, figsize=figsize)
     axTrain = sns.distplot(train[col], color = 'blue', ax=axTrain, hist=hist, bins=bins)
     axTest = sns.distplot(test[col], color = 'red', ax=axTest, hist=hist, bins=bins)
     plt.show()
+
+def compareMeanStd(train, test, col, form = '0.2f'):
+    trainMean = train[col].mean()
+    testMean = test[col].mean()
+    meanDiff = (abs(trainMean-testMean)*2)/(trainMean+testMean)
+    trainStd = train[col].std()
+    testStd = test[col].std()
+    stdDiff = (abs(trainStd-testStd)*2)/(trainStd+testStd)
+    print('''{} : Train - Test Difference
+    Mean : {:{form}}%
+    Std : {:{form}}%'''.format(col, meanDiff, stdDiff, form=form))
+
+def briefLgb(cols, train):
+    lgbTrain = lgb.Dataset(train[cols], label=train['target'], categorical_feature = cols)
+    param = {'metric':'l2_root', 'objective':'regression', 'num_thresds' : 2, 'reg_sqrt':True}
+    cvResult = lgb.cv(param, lgbTrain, 5, nfold=5, stratified=False)
+    return cvResult
