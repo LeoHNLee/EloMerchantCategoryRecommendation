@@ -1,4 +1,14 @@
 from collections import Counter
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import lightgbm as lgb
+
+def briefLgb(cols, train = trainLabels):
+    lgbTrain = lgb.Dataset(train[cols], label=train['target'], categorical_feature = cols)
+    param = {'metric':'l2_root', 'objective':'regression', 'num_thresds' : 2, 'reg_sqrt':True}
+    cvResult = lgb.cv(param, lgbTrain, 5, nfold=5, stratified=False)
+    return cvResult
 
 def preFirstActiveMonth(df):
     '''split first active month to year and month
@@ -54,3 +64,9 @@ def compressYear(df):
         if row==2011 or row==2012 or row==2013 : return 2014
         return row
     return df['first_active_year'].apply(lambda row : byRow(row))
+
+def compareTrainTest(col, train=trainLabels, test=testLabels, hist=True, bins=None, figsize=(15,8)):
+    fig, (axTrain, axTest) = plt.subplots(2, 1, figsize=figsize)
+    axTrain = sns.distplot(train[col], color = 'blue', ax=axTrain, hist=hist, bins=bins)
+    axTest = sns.distplot(test[col], color = 'red', ax=axTest, hist=hist, bins=bins)
+    plt.show()
