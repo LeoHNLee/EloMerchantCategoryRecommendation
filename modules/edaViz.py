@@ -5,38 +5,12 @@ import seaborn as sns
 import lightgbm as lgb
 import matplotlib.pyplot as plt
 
-def preFirstActiveMonth(df):
-    '''split first active month to year and month
-    x : pd.Series of which column name is 'first_active_month'
-    '''
-    year = df['first_active_month'].apply(lambda row : str(row)[:4])
-    month = df['first_active_month'].apply(lambda row : str(row)[5:7])
-    return year, month
-
-def printInfo(name, var):
-    '''print pandas df.info() with additional words
-    name : DF name
-    var : pandas dataframe'''
-    print("{} information : ".format(name), '\n')
-    var.info()
-    print("\n")
-
-def printDescribe(name, var):
+def printUniqCount(df):
     '''print pandas df.describe() with additional words
-    name : DF name
-    var : pandas dataframe'''
-    print("{} Describe : ".format(name), '\n', var.describe(), "\n\n")
-
-def printUniqCount(var):
-    '''print pandas df.describe() with additional words
-    var : pandas dataframe'''
-    for i in var:
-        print("{} Unique : ".format(i), '\n', var[i].unique(), "\n")
-        print("{} Count : ".format(i), '\n', var[i].value_counts(dropna=False), "\n\n")
-
-def mode(x):
-    cnt = Counter(x)
-    return cnt.most_common(1)[0][0]
+    df : pandas dataframe'''
+    for col in df.columns:
+        print("{} Unique : ".format(i), '\n', df[col].unique(), "\n")
+        print("{} Count : ".format(i), '\n', df[col].value_counts(dropna=False), "\n\n")
 
 def mergeGroupby(left, right, col, foo, rename=None, by='card_id'):
     '''merge by "card_id or etc" groupby Series to DF
@@ -49,17 +23,15 @@ def mergeGroupby(left, right, col, foo, rename=None, by='card_id'):
     ret = left.merge(right=grouped, how='left', on=by)
     return ret
 
-def compressYear(df):
-    def byRow(row):
-        if row == 2018 : return 2017
-        if row==2011 or row==2012 or row==2013 : return 2014
-        return row
-    return df['first_active_year'].apply(lambda row : byRow(row))
-
-def compareTrainTest(col, train, test, hist=True, bins=None, figsize=(15,15)):
-    fig, (axTrain, axTest) = plt.subplots(2, 1, figsize=figsize)
-    axTrain = sns.distplot(train[col], color = 'blue', ax=axTrain, hist=hist, bins=bins)
-    axTest = sns.distplot(test[col], color = 'red', ax=axTest, hist=hist, bins=bins)
+def compareTrainTest(cols, train, test, bins=100, hist=True, figsize=(20,5)):
+    length = len(cols)
+    width, height = figsize
+    fig = plt.figure(figsize=(width, length*height))
+    for idx, col in enumerate(cols):
+        locals()[col+'TrainAx'] = fig.add_subplot(length, 2,idx*2+1)
+        sns.distplot(train[col], color = 'blue', hist=hist, bins=bins, ax=locals()[col+'TrainAx'])
+        locals()[col+'TestAx'] = fig.add_subplot(length, 2,(idx+1)*2)
+        sns.distplot(test[col], color = 'red', hist=hist, bins=bins, ax=locals()[col+'TestAx'])
     plt.show()
 
 def compareMeanStd(train, test, col, form = '0.2f'):
@@ -78,3 +50,8 @@ def briefLgb(cols, train):
     param = {'metric':'l2_root', 'objective':'regression', 'num_thresds' : 2, 'reg_sqrt':True}
     cvResult = lgb.cv(param, lgbTrain, 5, nfold=5, stratified=False)
     return cvResult
+
+def idxKeyErrHandler(x, foo, ext=None):
+    try : return foo(x)
+    except IndexError : return ext
+    except KeyError : return ext
